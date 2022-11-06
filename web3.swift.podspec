@@ -23,5 +23,6 @@ Pod::Spec.new do |s|
   s.dependency 'secp256k1.swift', '~> 0.1.4'
   s.dependency 'GenericJSON', '~> 2.0'
   s.dependency 'Logging', '~> 1.0.0'
+  s.dependency 'SwiftNIOWebSocket', '~> 2.40.0'
 
 end
