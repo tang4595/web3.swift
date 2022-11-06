@@ -204,7 +204,7 @@ class WebSocketNetworkProvider: WebSocketNetworkProviderProtocol {
                 continuation.resume(throwing: EthereumClientError.webSocketError(EquatableError(base: error)))
                 self.resources.removeResponse(id)
             })
-            webSocket?.send(requestString, promise: sendPromise)
+//            webSocket?.send(requestString, promise: sendPromise)
         }
     }
 
@@ -213,22 +213,22 @@ class WebSocketNetworkProvider: WebSocketNetworkProviderProtocol {
     }
 
     func disconnect(code: WebSocketErrorCode = .goingAway) {
-        do {
-            resources.toggleForcedClosed(closed: true)
-            try webSocket?.close(code: code).wait()
-        } catch {
-            logger.warning("Clossing WebSocket failed:  \(error)")
-        }
+//        do {
+//            resources.toggleForcedClosed(closed: true)
+//            try webSocket?.close(code: code).wait()
+//        } catch {
+//            logger.warning("Clossing WebSocket failed:  \(error)")
+//        }
     }
 
     /// Additional public API method to refresh the connection if still open (close, re-open).
     /// For example, if the app suspects bad data / missed heart beats, it can try to refresh.
     func refresh() {
-        do {
-            try webSocket?.close(code: .goingAway).wait()
-        } catch {
-            logger.warning("Failed to Close WebSocket: \(error)")
-        }
+//        do {
+//            try webSocket?.close(code: .goingAway).wait()
+//        } catch {
+//            logger.warning("Failed to Close WebSocket: \(error)")
+//        }
     }
 
     func reconnect() {
@@ -259,135 +259,138 @@ class WebSocketNetworkProvider: WebSocketNetworkProviderProtocol {
     }
 
     private func connect(reconnectAttempt: Bool) {
-        if let ws = webSocket, !ws.isClosed {
-            return
-        }
-
-        if reconnectAttempt, configuration.maxReconnectAttempts > 0, resources.reconnectAttempts > configuration.maxReconnectAttempts {
-            logger.trace("WebSocket reached maxReconnectAttempts. Stop trying")
-
-            for request in resources.requestQueue {
-                request.value.callback(.failure(.maxAttemptsReachedOnReconnecting))
-                resources.removeRequest(request.key)
-            }
-            resources.resetReconnectAttempts()
-            return
-        }
-
-        logger.trace("Requesting WebSocket connection")
-
-        do {
-            currentState = .connecting
-
-            _ = try WebSocket.connect(to: url,
-                                      configuration: WebSocketClient.Configuration(tlsConfiguration: configuration.tlsConfiguration,
-                                                                                   maxFrameSize: configuration.maxFrameSize),
-                                      on: eventLoopGroup) { [weak self] ws in
-                guard let self = self else { return }
-                
-                self.logger.trace("WebSocket connected")
-
-                if reconnectAttempt {
-                    self.delegate?.onWebSocketReconnect()
-                    self.onReconnectCallback?()
-                }
-
-                self.webSocket = ws
-                self.currentState = .open
-                self.resources.resetReconnectAttempts()
-
-                // Send pending requests and delete
-                for request in self.resources.requestQueue {
-                    ws.send(request.value.payload)
-                    self.resources.removeRequest(request.key)
-                }
-
-                ws.onText { [weak self] _, string in
-                    guard let self = self else { return }
-
-                    if let data = string.data(using: .utf8),
-                       let json = try? JSONDecoder().decode(JSON.self, from: data),
-                       let subscriptionId = json["params"]?.objectValue?["subscription"]?.stringValue,
-                       let subscription = self.resources.subscriptions.first(where: { $0.key.id == subscriptionId }) {
-                        switch subscription.key.type {
-                        case .newBlockHeaders:
-                            if let data = string.data(using: .utf8), let response = try? JSONDecoder().decode(JSONRPCSubscriptionResponse<EthereumHeader>.self, from: data) {
-                                self.delegate?.onNewBlockHeader(subscription: subscription.key, header: response.params.result)
-                                subscription.value(response.params.result)
-                            }
-                        case .pendingTransactions:
-                            if let data = string.data(using: .utf8), let response = try? JSONDecoder().decode(JSONRPCSubscriptionResponse<String>.self, from: data) {
-                                self.delegate?.onNewPendingTransaction(subscription: subscription.key, txHash: response.params.result)
-                                subscription.value(response.params.result)
-                            }
-                        case .syncing:
-                            if let data = string.data(using: .utf8), let response = try? JSONDecoder().decode(JSONRPCSubscriptionResponse<EthereumSyncStatus>.self, from: data) {
-                                self.delegate?.onSyncing(subscription: subscription.key, sync: response.params.result)
-                                subscription.value(response.params.result)
-                            }
-                        }
-                    }
-
-                    if let data = string.data(using: .utf8),
-                       let json = try? JSONDecoder().decode(JSON.self, from: data),
-                       let responseId = json["id"]?.doubleValue {
-                        guard let response = self.resources.responseQueue.first(where: { $0.key == Int(responseId) }) else { return }
-                        response.value.callback(.success(data))
-                        self.resources.removeResponse(response.key)
-                    }
-                }
-
-                ws.onClose.whenComplete { [weak self] value in
-                    guard let self = self else { return }
-
-                    if let code = ws.closeCode {
-                        self.logger.trace("WebSocket closed. Code: \(code)")
-                    } else {
-                        self.logger.trace("WebSocket closed")
-                    }
-
-                    for request in self.resources.requestQueue {
-                        request.value.callback(.failure(.connectionNotOpen))
-                        self.resources.removeRequest(request.key)
-                    }
-
-                    for response in self.resources.responseQueue {
-                        response.value.callback(.failure(.invalidConnection))
-                        self.resources.removeResponse(response.key)
-                    }
-
-                    self.resources.cleanSubscriptions()
-
-                    if self.resources.forcedClose {
-                        self.currentState = .closed
-                    } else {
-                        self.currentState = .connecting
-
-                        self.reconnect()
-                    }
-                }
-
-            }.wait()
-        } catch {
-            currentState = .closed
-            logger.error("WebSocket connection failed: \(error)")
-
-            for request in resources.requestQueue {
-                request.value.callback(.failure(.connectionNotOpen))
-                resources.removeRequest(request.key)
-            }
-
-            for response in resources.responseQueue {
-                response.value.callback(.failure(.connectionNotOpen))
-                resources.removeResponse(response.key)
-            }
-
-            resources.cleanSubscriptions()
-
-            if case ChannelError.connectTimeout = error {
-                reconnect()
-            }
-        }
+//        if let ws = webSocket, !ws.isClosed {
+//            return
+//        }
+//        if let ws = webSocket, !ws.isClosed {
+//            return
+//        }
+//
+//        if reconnectAttempt, configuration.maxReconnectAttempts > 0, resources.reconnectAttempts > configuration.maxReconnectAttempts {
+//            logger.trace("WebSocket reached maxReconnectAttempts. Stop trying")
+//
+//            for request in resources.requestQueue {
+//                request.value.callback(.failure(.maxAttemptsReachedOnReconnecting))
+//                resources.removeRequest(request.key)
+//            }
+//            resources.resetReconnectAttempts()
+//            return
+//        }
+//
+//        logger.trace("Requesting WebSocket connection")
+//
+//        do {
+//            currentState = .connecting
+//
+//            _ = try WebSocket.connect(to: url,
+//                                      configuration: WebSocketClient.Configuration(tlsConfiguration: configuration.tlsConfiguration,
+//                                                                                   maxFrameSize: configuration.maxFrameSize),
+//                                      on: eventLoopGroup) { [weak self] ws in
+//                guard let self = self else { return }
+//
+//                self.logger.trace("WebSocket connected")
+//
+//                if reconnectAttempt {
+//                    self.delegate?.onWebSocketReconnect()
+//                    self.onReconnectCallback?()
+//                }
+//
+//                self.webSocket = ws
+//                self.currentState = .open
+//                self.resources.resetReconnectAttempts()
+//
+//                // Send pending requests and delete
+//                for request in self.resources.requestQueue {
+//                    ws.send(request.value.payload)
+//                    self.resources.removeRequest(request.key)
+//                }
+//
+//                ws.onText { [weak self] _, string in
+//                    guard let self = self else { return }
+//
+//                    if let data = string.data(using: .utf8),
+//                       let json = try? JSONDecoder().decode(JSON.self, from: data),
+//                       let subscriptionId = json["params"]?.objectValue?["subscription"]?.stringValue,
+//                       let subscription = self.resources.subscriptions.first(where: { $0.key.id == subscriptionId }) {
+//                        switch subscription.key.type {
+//                        case .newBlockHeaders:
+//                            if let data = string.data(using: .utf8), let response = try? JSONDecoder().decode(JSONRPCSubscriptionResponse<EthereumHeader>.self, from: data) {
+//                                self.delegate?.onNewBlockHeader(subscription: subscription.key, header: response.params.result)
+//                                subscription.value(response.params.result)
+//                            }
+//                        case .pendingTransactions:
+//                            if let data = string.data(using: .utf8), let response = try? JSONDecoder().decode(JSONRPCSubscriptionResponse<String>.self, from: data) {
+//                                self.delegate?.onNewPendingTransaction(subscription: subscription.key, txHash: response.params.result)
+//                                subscription.value(response.params.result)
+//                            }
+//                        case .syncing:
+//                            if let data = string.data(using: .utf8), let response = try? JSONDecoder().decode(JSONRPCSubscriptionResponse<EthereumSyncStatus>.self, from: data) {
+//                                self.delegate?.onSyncing(subscription: subscription.key, sync: response.params.result)
+//                                subscription.value(response.params.result)
+//                            }
+//                        }
+//                    }
+//
+//                    if let data = string.data(using: .utf8),
+//                       let json = try? JSONDecoder().decode(JSON.self, from: data),
+//                       let responseId = json["id"]?.doubleValue {
+//                        guard let response = self.resources.responseQueue.first(where: { $0.key == Int(responseId) }) else { return }
+//                        response.value.callback(.success(data))
+//                        self.resources.removeResponse(response.key)
+//                    }
+//                }
+//
+//                ws.onClose.whenComplete { [weak self] value in
+//                    guard let self = self else { return }
+//
+//                    if let code = ws.closeCode {
+//                        self.logger.trace("WebSocket closed. Code: \(code)")
+//                    } else {
+//                        self.logger.trace("WebSocket closed")
+//                    }
+//
+//                    for request in self.resources.requestQueue {
+//                        request.value.callback(.failure(.connectionNotOpen))
+//                        self.resources.removeRequest(request.key)
+//                    }
+//
+//                    for response in self.resources.responseQueue {
+//                        response.value.callback(.failure(.invalidConnection))
+//                        self.resources.removeResponse(response.key)
+//                    }
+//
+//                    self.resources.cleanSubscriptions()
+//
+//                    if self.resources.forcedClose {
+//                        self.currentState = .closed
+//                    } else {
+//                        self.currentState = .connecting
+//
+//                        self.reconnect()
+//                    }
+//                }
+//
+//            }.wait()
+//        } catch {
+//            currentState = .closed
+//            logger.error("WebSocket connection failed: \(error)")
+//
+//            for request in resources.requestQueue {
+//                request.value.callback(.failure(.connectionNotOpen))
+//                resources.removeRequest(request.key)
+//            }
+//
+//            for response in resources.responseQueue {
+//                response.value.callback(.failure(.connectionNotOpen))
+//                resources.removeResponse(response.key)
+//            }
+//
+//            resources.cleanSubscriptions()
+//
+//            if case ChannelError.connectTimeout = error {
+//                reconnect()
+//            }
+//        }
     }
 
     private func encodeRequest<P: Encodable>(method: String, params: P, id: Int) throws -> String {
