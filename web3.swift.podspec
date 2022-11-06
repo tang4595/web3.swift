@@ -24,5 +24,6 @@ Pod::Spec.new do |s|
   s.dependency 'GenericJSON', '~> 2.0'
   s.dependency 'Logging', '~> 1.0.0'
   s.dependency 'SwiftNIOWebSocket', '~> 2.40.0'
+  s.dependency 'NIOSSL', '~> 2.40.0'
 
 end
