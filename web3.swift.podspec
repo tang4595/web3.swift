@@ -19,8 +19,8 @@ Pod::Spec.new do |s|
   s.preserve_paths = 'web3swift/lib/**/module.map'
 
 
-  s.dependency 'BigInt', '~> 5.0.0'
-  s.dependency 'secp256k1.swift', '~> 0.1'
+  s.dependency 'BigInt', '~> 5.2.0'
+  s.dependency 'secp256k1.swift', '~> 0.1.4'
   s.dependency 'GenericJSON', '~> 2.0'
 
 end
